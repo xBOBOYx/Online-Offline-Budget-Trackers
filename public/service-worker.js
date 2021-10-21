@@ -4,18 +4,19 @@ const FILES_TO_CACHE = [
   "/",
   "/index.html",
   "/index.js",
+  "/db.js",
   "/service-worker.js",
   "/manifest.webmanifest",
   "/styles.css",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
-  "/db.js",
+ 
   "https://cdn.jsdelivr.net/npm/chart.js@2.8.0"
 ];
 
 // install
-self.addEventListener("install", function (evt) {
-  evt.waitUntil(
+self.addEventListener("install", function (event) {
+  event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       console.log("Your files were Cached successfully!");
       return cache.addAll(FILES_TO_CACHE);
@@ -24,35 +25,39 @@ self.addEventListener("install", function (evt) {
   self.skipWaiting();
 });
 
-self.addEventListener("fetch", function (evt) {
+
+self.addEventListener("fetch", function (event) {
   // cache all get requests to /api routes
-  if (evt.request.url.includes("/api/")) {
-    evt.respondWith(
-      caches.open(DATA_CACHE_NAME).then(async cache => {
-        try {
-          const response = await fetch(evt.request);
-          // sucessfull response will clone and store in the cache
-          if (response.status === 200) {
-            cache.put(evt.request.url, response.clone());
-          }
-          return response;
-        } catch (err) {
-          return await cache.match(evt.request);
-        }
+  if (event.request.url.includes("/api/")) {
+    event.respondWith(
+      caches.open(DATA_CACHE_NAME).then(cache => {
+        return fetch(event.request)
+          .then(response => {
+            // sucessfull response will clone and store in the cache
+            if (response.status === 200) {
+              cache.put(event.request.url, response.clone());
+            }
+            return response;
+          })
+          .catch(err => {
+            // Network request failed, try to get it from the cache.
+            return cache.match(event.request);
+          });
       }).catch(err => console.log(err))
     );
 
     return;
   }
 
-  evt.respondWith(
-    fetch(evt.request).catch(async function () {
-      const response = await caches.match(evt.request);
-      if (response) {
-        return response;
-      } else if (evt.request.headers.get("accept").includes("text/html")) {
-        return caches.match("/");
-      }
+  event.respondWith(
+    fetch(event.request).catch(function () {
+      return caches.match(event.request).then(function (response) {
+        if (response) {
+          return response;
+        } else if (event.request.headers.get("accept").includes("text/html")) {
+          return caches.match("/");
+        }
+      });
     })
   );
 });
