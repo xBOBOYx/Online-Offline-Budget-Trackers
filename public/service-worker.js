@@ -9,7 +9,7 @@ const FILES_TO_CACHE = [
   "/styles.css",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
-  '/db.js',
+  "/db.js",
   "https://cdn.jsdelivr.net/npm/chart.js@2.8.0"
 ];
 
