@@ -3,7 +3,9 @@ const DATA_CACHE_NAME = "data-cache-v1";
 const FILES_TO_CACHE = [
   "/",
   "/index.html",
-  "manifest.webmanifest",
+  "/index.js",
+  "/service-worker.js",
+  "/manifest.webmanifest",
   "/styles.css",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
@@ -26,19 +28,17 @@ self.addEventListener("fetch", function (evt) {
   // cache all get requests to /api routes
   if (evt.request.url.includes("/api/")) {
     evt.respondWith(
-      caches.open(DATA_CACHE_NAME).then(cache => {
-        return fetch(evt.request)
-          .then(response => {
-            // sucessfull response will clone and store in the cache
-            if (response.status === 200) {
-              cache.put(evt.request.url, response.clone());
-            }
-            return response;
-          })
-          .catch(err => {
-            // Network request failed, try to get it from the cache.
-            return cache.match(evt.request);
-          });
+      caches.open(DATA_CACHE_NAME).then(async cache => {
+        try {
+          const response = await fetch(evt.request);
+          // sucessfull response will clone and store in the cache
+          if (response.status === 200) {
+            cache.put(evt.request.url, response.clone());
+          }
+          return response;
+        } catch (err) {
+          return await cache.match(evt.request);
+        }
       }).catch(err => console.log(err))
     );
 
@@ -46,14 +46,13 @@ self.addEventListener("fetch", function (evt) {
   }
 
   evt.respondWith(
-    fetch(evt.request).catch(function () {
-      return caches.match(evt.request).then(function (response) {
-        if (response) {
-          return response;
-        } else if (evt.request.headers.get("accept").includes("text/html")) {
-          return caches.match("/");
-        }
-      });
+    fetch(evt.request).catch(async function () {
+      const response = await caches.match(evt.request);
+      if (response) {
+        return response;
+      } else if (evt.request.headers.get("accept").includes("text/html")) {
+        return caches.match("/");
+      }
     })
   );
 });
